@@ -1,21 +1,42 @@
 # Core dependencies for BGE-Reasoner BRIGHT reproduction
-datasets>=2.14.0
-sentence-transformers>=2.2.0
-transformers>=4.35.0
-torch>=2.0.0
-numpy>=1.24.0
-pyyaml>=6.0
-tqdm>=4.65.0
-huggingface-hub>=0.16.0
+# Updated Dec 2025
 
-# For retrieval experiments
-scipy>=1.10.0
-scikit-learn>=1.3.0
+# Deep Learning & Transformers
+torch==2.9.1
+transformers==4.57.3
+sentence-transformers==5.2.0
+datasets==4.4.1
+huggingface-hub==0.36.0
 
-# Optional: for GPU acceleration
-# accelerate>=0.24.0
-# bitsandbytes>=0.41.0
+# Scientific Computing
+# Note: numpy 1.25.0 required for diskannpy compatibility
+numpy==1.25.0
+pandas==2.3.3
+scipy==1.15.3
+scikit-learn==1.8.0
 
-# Optional: for advanced features
-# faiss-gpu>=1.7.4  # For fast similarity search (GPU version)
-# faiss-cpu>=1.7.4  # For fast similarity search (CPU version)
+# Retrieval & Search
+# Note: faiss-cpu 1.7.4 compatible with numpy 1.25.0
+faiss-cpu==1.7.4
+diskannpy==0.7.0
+beir==2.2.0
+pytrec_eval==0.5
+
+# LLM APIs
+openai==2.12.0
+google-genai==1.55.0
+
+# Utilities
+PyYAML==6.0.3
+tqdm==4.67.1
+matplotlib==3.10.8
+
+# Optional: GPU acceleration (if using CUDA)
+# Already installed with torch 2.9.1:
+# - CUDA 12.8
+# - cuDNN 9.10
+# - nvidia drivers compatible with CUDA 13.0
+
+# Development
+# pip>=25.3
+# setuptools>=80.9.0
