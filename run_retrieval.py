@@ -52,6 +52,24 @@ import faiss
 
 import signal
 
+BrightShortInstructions = {
+    # StackExchange
+    "biology": "Given a Biology post, retrieve relevant passages that help answer the post.",
+    "earth_science": "Given an Earth Science post, retrieve relevant passages that help answer the post.",
+    "economics": "Given an Economics post, retrieve relevant passages that help answer the post.",
+    "psychology": "Given a Psychology post, retrieve relevant passages that help answer the post.",
+    "robotics": "Given a Robotics post, retrieve relevant passages that help answer the post.",
+    "stackoverflow": "Given a Stack Overflow post, retrieve relevant passages that help answer the post.",
+    "sustainable_living": "Given a Sustainable Living post, retrieve relevant passages that help answer the post.",
+    # Coding
+    "leetcode": "Given a Coding problem, retrieve relevant examples that help answer the problem.",
+    "pony": "Given a Pony question, retrieve relevant passages that help answer the question.",
+    # Theorem-based
+    "aops": "Given a Math problem, retrieve relevant examples that help answer the problem.",
+    "theoremqa_questions": "Given a Math problem, retrieve relevant examples that help answer the problem.",
+    "theoremqa_theorems": "Given a Math problem, retrieve relevant theorems that help answer the problem.",
+}
+
 def timeout_handler(signum, frame):
     raise TimeoutError("Operation timed out!")
 
@@ -70,13 +88,17 @@ elif os.environ.get("OPENROUTER_API_KEY"):
         api_key=os.environ.get("OPENROUTER_API_KEY"),
         base_url="https://openrouter.ai/api/v1"
     )
-    llm_model_name = "google/gemini-2.0-flash-exp:free"
+    # llm_model_name = "google/gemini-2.0-flash-exp:free"
+
+    # llm_model_name =  "google/gemini-2.0-flash-001"
+    llm_model_name = "google/gemini-2.5-flash"
     api_type = "openai_compatible"
     print(f"✓ Using OpenRouter API: {llm_model_name}")
 
 elif os.environ.get("OPENAI_API_KEY"):
     client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     llm_model_name = "gpt-4o-mini"
+    # llm_model_name = "gpt-5-mini"
     api_type = "openai_compatible"
     print(f"✓ Using OpenAI API: {llm_model_name}")
 
@@ -364,7 +386,9 @@ def dist_rank(qid,pids):
     rank_list=[]
     output_validity=True
 
-    sys_instruct=f"You are an intelligent assistant that can rank answers based on their relevancy to the query. I will provide you with {len(pids)} passages, each indicated by number identifier []. \nRank the answers based on their relevance to query: {query[qid]}."
+    # sys_instruct=f"You are an intelligent assistant that can rank answers based on their relevancy to the query. I will provide you with {len(pids)} passages, each indicated by number identifier []. \nRank the answers based on their relevance to query: {query[qid]}."
+
+    sys_instruct=f"You are an expert in {dataset_name}. {BrightShortInstructions[dataset_name]} I will provide you with a query and {len(pids)} passages, each indicated by number identifier []. \nRank the passages based on their relevance to query."
 
     start_time=time.time()
     call_success=True
@@ -375,16 +399,16 @@ def dist_rank(qid,pids):
         start_time=time.time()
 
         passages_text = "\n\n".join([f"[{i+1}] {passage[pid]}" for i,pid in enumerate(pids)])
-        user_message = f"{passages_text}\n\nQuery: {query[qid]}. \nRank the {len(pids)} passages above based on their relevance to the query. The passages should be listed in descending order using identifiers. The most relevant passages should be listed first. The output format should be like [1] > [2] ... > [{len(pids)}]. Only response the ranking results, do not say any word or explain."
+        user_message = f"Query: {query[qid]}.\n Passages: {passages_text}\n\n \nRank the {len(pids)} passages above based on their relevance to the query. The passages should be listed in descending order using identifiers. The most relevant passages should be listed first. The output format should be like [1] > [2] ... > [{len(pids)}]. Only response the ranking results, do not say any word or explain."
 
         char_count = len(sys_instruct) + len(user_message)
         total_tokens = char_count // 4
 
         if api_type == "gemini":
-            messages = []
+            messages = [sys_instruct, f"Query: {query[qid]}"]
             for i,pid in enumerate(pids):
                 messages.append(f"[{i+1}] {passage[pid]}")
-            messages.append(f"Query: {query[qid]}. \nRank the {len(pids)} passages above based on their relevance to the query. The passages should be listed in descending order using identifiers. The most relevant passages should be listed first. The output format should be like [1] > [2] ... > [{len(pids)}]. Only response the ranking results, do not say any word or explain.")
+            messages.append(f"Rank the {len(pids)} passages above based on their relevance to the query. The passages should be listed in descending order using identifiers. The most relevant passages should be listed first. The output format should be like [1] > [2] ... > [{len(pids)}]. Please read these passages carefully, one by one, to determine their order. Only respond with the ranking results; do not include any additional text or explanation.")
 
             response = client.models.generate_content(
                 model=llm_model_name,
@@ -417,7 +441,7 @@ def dist_rank(qid,pids):
     except Exception as e:
         signal.alarm(0)
         print(f"LLM API call failed: {e}")
-        sleep_time = random.uniform(0, 2)
+        sleep_time = random.uniform(0, 4)
         time.sleep(sleep_time)
         call_success=False
 
@@ -806,11 +830,13 @@ def retrieval_test(retrieval_algo="our",k_neighbors=10,query_complexity=0,query_
     random.seed(seed_value)
 
     if True:
-        num_processes=12
+        num_processes=36
         
         query_args=[]
         for qid in groundtruth:
             query_args.append((qid,retrieval_algo,k_neighbors,query_complexity,query_quota,second_query_complexity,second_query_quota))
+
+        # query_args=query_args[:10]
 
         random.shuffle(query_args)
 
@@ -901,15 +927,17 @@ def retrieval_test(retrieval_algo="our",k_neighbors=10,query_complexity=0,query_
 if algo_name=="RGS":
     build_index("diskann")
     first_query_complexity=5000
-    window_size=10
+    window_size=20
     retrieval_test(retrieval_algo="bi",k_neighbors=first_query_complexity,query_complexity=first_query_complexity)
     for second_query_quota in [100,300,500]:
+    # for second_query_quota in [100,300]:
         retrieval_test(retrieval_algo="bi(llm-ours)",query_complexity=first_query_complexity,second_query_quota=second_query_quota)
 elif algo_name=="RR":
     build_index("diskann")
     first_query_complexity=5000
-    window_size=10
+    window_size=20
     for second_query_quota in [100,300,500]:
+    # for second_query_quota in [100]:
         retrieval_test(retrieval_algo="bi(llm-baseline)",query_complexity=first_query_complexity,second_query_quota=second_query_quota)
 elif algo_name=="SlideGAR":
     

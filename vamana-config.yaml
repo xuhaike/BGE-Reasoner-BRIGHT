@@ -1,0 +1,8 @@
+float:
+  angular:
+    - name: vamana(diskann)
+      run_groups:
+        default:
+          args:
+            - alpha: 1.2
+              l_build: 100

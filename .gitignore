@@ -30,6 +30,7 @@ models/
 results/
 logs/
 experiment_log/
+indices/
 *.log
 *.csv
 *.json
